@@ -243,7 +243,7 @@ def get_episode_actions(username):
     actions = [{
             'podcast': a.podcast,
             'episode': a.episode,
-            'device': a.device_name,
+            'device': a.device.device_name,
             'action': a.action,
             'timestamp': a.timestamp,
             'started': a.started,
