@@ -41,10 +41,11 @@ class Device(db.Model):
     device_type = db.Column(db.String(10))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
-    def __init__(self, device_name, caption, device_type):
+    def __init__(self, username, device_name, caption, device_type):
         self.device_name = device_name
         self.device_type = device_type
         self.caption = caption
+        self.user_id = User.query.filter(username=username).first().id
 
     def __repl__(self):
         return '<Device: {}>'.format(self.device_name)
@@ -174,6 +175,12 @@ def list_devices(username):
 @app.route('/api/2/devices/<string:username>/<string:device_name>.json', methods=['POST'])
 @auth.login_required
 def update_device_data(username, device_name):
+    payload = request.get_json(force=True)
+    caption = payload.get('caption')
+    device_type = payload.get('type')
+    d = Device(username, device_name, caption, device_type)
+    db.session.add(d)
+    db.session.commit()
     return '', 200
 
 
