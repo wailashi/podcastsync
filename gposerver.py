@@ -115,7 +115,7 @@ def add_subscription_event(username, device_id, podcast, action):
 
 def add_episode_action(username, device_id, podcast, episode, action, timestamp, started=None, position=None, total=None):
     user = User.query.filter_by(username=username).first().id
-    device = Device.query.filter_by(device_id=device_id).first().id
+    device = Device.query.filter_by(device_name=device_name).first().id
     db.session.add(EpisodeAction(podcast, episode, user, device, action, timestamp, started, position, total))
     db.session.commit()
 
