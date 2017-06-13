@@ -51,7 +51,7 @@ class Device(db.Model):
         self.device_name = device_name
         self.device_type = device_type
         self.caption = caption
-        self.user_id = User.query.filter(username=username).first().id
+        self.user_id = User.query.filter_by(username=username).first().id
 
     def __repl__(self):
         return '<Device: {}>'.format(self.device_name)
