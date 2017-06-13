@@ -68,6 +68,7 @@ class SubscriptionEvent(db.Model):
     podcast = db.Column(db.String)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     device_id = db.Column(db.Integer, db.ForeignKey('device.id'))
+    device = db.relationship('Device', backref='subscriptionevent')
     action = db.Column(db.Enum(SubscriptionAction))
 
     def __init__(self, podcast, user_id, device_id, action):
