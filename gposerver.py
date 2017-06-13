@@ -12,12 +12,18 @@ from itsdangerous import TimedJSONWebSignatureSerializer as Serializer, BadSigna
 import json
 import time
 
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///./test.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'as393,d392.j#19#$'
-db = SQLAlchemy(app)
+db = SQLAlchemy()
 auth = HTTPBasicAuth()
+
+def create_app():
+        app = Flask(__name__)
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///./test.db'
+        app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+        app.config['SECRET_KEY'] = 'as393,d392.j#19#$'
+        db.init_app(app)
+        return app
+
+app = create_app()
 
 
 class User(db.Model):
@@ -235,15 +241,15 @@ def upload_subscription_changes(username, device_name):
 @auth.login_required
 def get_episode_actions(username):
     podcast = request.args.get('podcast')
-    device = request.args.get('device')
+    device_name = request.args.get('device')
     since = request.args.get('since')
     aggregated = request.args.get('aggregated')
 
     query = EpisodeAction.query.filter(User.username == username)
     if podcast:
         query = query.filter_by(podcast=podcast)
-    if device:
-        query = query.filter_by(device=device)
+    if device_name:
+        query = query.filter(Device.device_name == device_name)
     if since:
         query = query.filter(EpisodeAction.upload_time >= since)
 
@@ -272,10 +278,3 @@ def upload_episode_actions(username):
     timestamp = int(time.time())
     response = {'timestamp': timestamp, 'update_urls': []}
     return jsonify(response), 200
-
-
-if __name__ == "__main__":
-    logger = RotatingFileHandler('app.log', maxBytes=10000, backupCount=1)
-    logger.setLevel(logging.INFO)
-    app.logger.addHandler(logger)
-    app.run(port=40024)
