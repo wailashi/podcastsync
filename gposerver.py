@@ -36,18 +36,18 @@ class User(db.Model):
 
 class Device(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    device_id = db.Column(db.String, unique=True)
+    device_name = db.Column(db.String, unique=True)
     caption = db.Column(db.String)
     device_type = db.Column(db.String(10))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
-    def __init__(self, device_id, caption, device_type):
-        self.device_id = device_id
+    def __init__(self, device_name, caption, device_type):
+        self.device_name = device_name
         self.device_type = device_type
         self.caption = caption
 
     def __repl__(self):
-        return '<Device: {}>'.format(self.device_id)
+        return '<Device: {}>'.format(self.device_name)
 
 
 class SubscriptionAction(enum.Enum):
@@ -81,6 +81,7 @@ class EpisodeAction(db.Model):
     episode = db.Column(db.String)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     device_id = db.Column(db.Integer, db.ForeignKey('device.id'))
+    device = db.relationship('Device', backref='episodeaction')
     upload_time = db.Column(db.Integer)
     action = db.Column(db.String)
     started = db.Column(db.Integer)
@@ -119,12 +120,12 @@ def add_episode_action(username, device_id, podcast, episode, action, timestamp,
     db.session.commit()
 
 
-def get_subscriptions(username, device_id):
+def get_subscriptions(username, device_name):
     events = SubscriptionEvent.query.filter(User.username == username,
-                                            Device.device_id == device_id).all()
+                                            Device.device_name == device_name).all()
     return events
 
-import pprint
+
 @auth.verify_password
 def verify_password(username, password):
     if session.get('logged_in'):
@@ -142,7 +143,7 @@ def verify_password(username, password):
 
 @app.route('/')
 def frontpage():
-	return 'gposerver', 200
+    return 'gposerver', 200
 
 
 @app.route('/api/2/auth/<string:username>/login.json', methods=['POST'])
@@ -153,10 +154,6 @@ def authenticate(username):
     session['logged_in'] = True
     session['user'] = username
     response = make_response('', 200)
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Cache-Control'] = 'no-store, must-revalidate, no-cache, max-age=0'
-    response.headers['Set-Cookie'] = 'sessionid=8xsr5iiwmms91l106x29f84gi2yiu0da; expires=Sat, 09-Jun-2018 23:03:39 GMT; HttpOnly; Max-Age=31535999; Path=/'
-    response.headers['Set-Cookie'] = 'csrftoken=WY88pikZ8UtytSsmP338rdioJfN9WozJ; expires=Fri, 08-Jun-2018 23:03:40 GMT; Max-Age=31449600; secure; HttpOnly; Path=/'
     response.set_cookie('sessionid', value='testcookievalue', max_age=5000, httponly=True)
     return response
 
@@ -165,7 +162,7 @@ def authenticate(username):
 @auth.login_required
 def list_devices(username):
     devices = Device.query.filter(User.username == username).all()
-    response = [{'id': d.device_id,
+    response = [{'id': d.device_name,
                  'caption': d.caption,
                  'type': d.device_type,
                  'subscriptions': 0, }
@@ -174,23 +171,23 @@ def list_devices(username):
     return jsonify(response), 200
 
 
-@app.route('/api/2/devices/<string:username>/<string:device_id>.json', methods=['POST'])
+@app.route('/api/2/devices/<string:username>/<string:device_name>.json', methods=['POST'])
 @auth.login_required
-def update_device_data(username, device_id):
+def update_device_data(username, device_name):
     return '', 200
 
 
-@app.route('/subscriptions/<string:username>/<string:device_id>.<string:response_format>', methods=['GET'])
+@app.route('/subscriptions/<string:username>/<string:device_name>.<string:response_format>', methods=['GET'])
 @auth.login_required
-def get_device_subscriptions(username, device_id, response_format):
+def get_device_subscriptions(username, device_name, response_format):
     if response_format != 'json':
         return '', 400
     return '', 201
 
 
-@app.route('/api/2/subscriptions/<string:username>/<string:device_id>.json', methods=['GET'])
+@app.route('/api/2/subscriptions/<string:username>/<string:device_name>.json', methods=['GET'])
 @auth.login_required
-def get_subscription_changes(username, device_id):
+def get_subscription_changes(username, device_name):
     since = request.args.get('since')
     query = db.session.query(SubscriptionEvent.podcast,
                                 func.sum(case([(SubscriptionEvent.action == 'subscribe', 1)], else_=0)),
@@ -209,19 +206,19 @@ def get_subscription_changes(username, device_id):
     return jsonify(response), 200
 
 
-@app.route('/api/2/subscriptions/<string:username>/<string:device_id>.json', methods=['POST'])
+@app.route('/api/2/subscriptions/<string:username>/<string:device_name>.json', methods=['POST'])
 @auth.login_required
-def upload_subscription_changes(username, device_id):
+def upload_subscription_changes(username, device_name):
     payload = request.get_json(force=True)
     add = payload['add']
     remove = payload['remove']
     update_urls = [[url, url] for url in add]
     for podcast in add:
         if podcast:
-            add_subscription_event(username, device_id, podcast, 'subscribe')
+            add_subscription_event(username, device_name, podcast, 'subscribe')
     for podcast in remove:
         if podcast:
-            add_subscription_event(username, device_id, podcast, 'unsubscribe')
+            add_subscription_event(username, device_name, podcast, 'unsubscribe')
     timestamp = int(time.time())
     response = {'timestamp': timestamp, 'update_urls': update_urls}
     return jsonify(response), 200
@@ -246,7 +243,7 @@ def get_episode_actions(username):
     actions = [{
             'podcast': a.podcast,
             'episode': a.episode,
-            'device': a.device_id,
+            'device': a.device_name,
             'action': a.action,
             'timestamp': a.timestamp,
             'started': a.started,
