@@ -192,12 +192,13 @@ def get_device_subscriptions(username, device_id, response_format):
 @auth.login_required
 def get_subscription_changes(username, device_id):
     since = request.args.get('since')
-    podcasts = db.session.query(SubscriptionEvent.podcast,
+    query = db.session.query(SubscriptionEvent.podcast,
                                 func.sum(case([(SubscriptionEvent.action == 'subscribe', 1)], else_=0)),
                                 func.sum(case([(SubscriptionEvent.action == 'unsubscribe', 1)], else_=0))) \
-                               .select_from(SubscriptionEvent)\
-                               .filter(SubscriptionEvent.timestamp >= int(since))\
-                               .group_by(SubscriptionEvent.podcast).all()
+                               .select_from(SubscriptionEvent)
+    if since:
+        query = query.filter(SubscriptionEvent.timestamp >= int(since))
+    podcasts = query.group_by(SubscriptionEvent.podcast).all()
     response = {'add': [], 'remove': []}
     for podcast, added, removed in podcasts:
         if added > removed:
