@@ -7,6 +7,8 @@ echo "Starting PodcastSync"
 
 source venv/bin/activate
 
-exec gunicorn gposerver:app -b 127.0.0.1:$PORT \
+exec gunicorn gposerver:app -b 0.0.0.0:$PORT \
 	--name podcastsync \
-	--pid $PIDFILE
+	--workers=2 \
+	--pid $PIDFILE \
+	--log-leve=debug
